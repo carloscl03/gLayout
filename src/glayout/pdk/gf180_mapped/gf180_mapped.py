@@ -10,7 +10,6 @@ import os
 # Actual Pin definations for GlobalFoundries 180nmMCU from the PDK manual
 # Ref: https://gf180mcu-pdk.readthedocs.io/en/latest/
 
-#LAYER["fusetop"]=(75, 0)
 LAYER = {
     "metal5": (81, 0),
     "via4": (41, 0),
@@ -29,6 +28,12 @@ LAYER = {
     "nwell": (21, 0),
     "lvpwell": (204, 0),
     "dnwell": (12, 0),
+    # MIM capacitor, option A. The top plate is FuseTop; CAP_MK is only a
+    # marker that has to enclose it (rule MIM.7). Drawing the marker as if it
+    # were the plate leaves the cap with no dielectric at all, so the via2
+    # array that contacts the top plate lands on the bottom plate instead and
+    # shorts the two together.
+    "fusetop": (75, 0),
     "CAP_MK": (117, 5),
     # BJT layers
     "drc_bjt": (127, 5),
@@ -62,7 +67,8 @@ gf180_glayer_mapping = {
     "nwell": "nwell",
     "pwell": "lvpwell",
     "dnwell": "dnwell",
-    "capmet": "CAP_MK",
+    "capmet": "fusetop",
+    "capmet_mk": "CAP_MK",
     # bjt layer
     "drc_bjt": "drc_bjt",
     "lvs_bjt": "lvs_bjt",

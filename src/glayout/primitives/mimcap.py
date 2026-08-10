@@ -73,6 +73,12 @@ def mimcap(
     )
     bottom_met_enclosure = pdk.get_grule(capmetbottom,"capmet")["min_enclosure"]
     mim_cap.add_padding(layers=(pdk.get_glayer(capmetbottom),),default=bottom_met_enclosure)
+    # Some processes require a marker enclosing the cap plate -- gf180 rule
+    # MIM.7 asks for CAP_MK around FuseTop. PDKs without such a marker just
+    # do not map the glayer.
+    if "capmet_mk" in pdk.glayers:
+        marker_enclosure = pdk.get_grule("capmet").get("mk_enclosure", bottom_met_enclosure)
+        mim_cap.add_padding(layers=(pdk.get_glayer("capmet_mk"),), default=marker_enclosure)
     # flatten and create ports
     mim_cap = add_ports_perimeter(mim_cap, layer=pdk.get_glayer(capmetbottom), prefix="bottom_met_")
     mim_cap.add_ports(top_met_ref.get_ports_list())
