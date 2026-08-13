@@ -462,6 +462,21 @@ class ComponentReference:
             for name, p in self.parent.ports.items()
         }
 
+    def __getitem__(self, key: str) -> Port:
+        """comp["port_name"], como en gdsfactory.
+
+        No es azucar: primitivos como bjt indexan el componente para leer el
+        ancho de un puerto, y sin esto el error que sale ("Component object is
+        not subscriptable") no dice nada del puerto que buscaba.
+        """
+        try:
+            return self.ports[key]
+        except KeyError:
+            raise KeyError(
+                f"no port {key!r} on {getattr(self, 'name', self)!r}; "
+                f"hay {sorted(self.ports)[:8]}..."
+            ) from None
+
     def get_ports_list(self, prefix: str = "", **filters) -> list[Port]:
         """Filter ports. `prefix` filters to names starting with that prefix
         (matches gdsfactory.component.Component.get_ports_list). Extra
@@ -649,9 +664,14 @@ class Component:
 
     def add_ports(
         self,
-        ports: Iterable[Port],
+        ports: Union[Iterable[Port], "dict[str, Port]"],
         prefix: str = "",
     ) -> "Component":
+        # gdsfactory accepts either a sequence of ports or a name->port mapping,
+        # and glayout passes `ref.ports` -- a dict -- straight through. Iterating
+        # that yields the names, so `p.name` blows up with a str.
+        if hasattr(ports, "values"):
+            ports = list(ports.values())
         for p in ports:
             new_name = f"{prefix}{p.name}" if prefix else p.name
             np = p.copy(name=new_name)
@@ -660,6 +680,21 @@ class Component:
                 raise ValueError(f"duplicate port name {new_name!r} on component {self.name!r}")
             self.ports[new_name] = np
         return self
+
+    def __getitem__(self, key: str) -> Port:
+        """comp["port_name"], como en gdsfactory.
+
+        No es azucar: primitivos como bjt indexan el componente para leer el
+        ancho de un puerto, y sin esto el error que sale ("Component object is
+        not subscriptable") no dice nada del puerto que buscaba.
+        """
+        try:
+            return self.ports[key]
+        except KeyError:
+            raise KeyError(
+                f"no port {key!r} on {getattr(self, 'name', self)!r}; "
+                f"hay {sorted(self.ports)[:8]}..."
+            ) from None
 
     def get_ports_list(self, prefix: str = "", **filters) -> list[Port]:
         out: list[Port] = []
