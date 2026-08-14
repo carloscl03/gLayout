@@ -35,6 +35,12 @@ LAYER = {
     # shorts the two together.
     "fusetop": (75, 0),
     "CAP_MK": (117, 5),
+    # Segundo marcador del MIM. MIM.7 solo pide CAP_MK, asi que con ese solo
+    # el DRC pasa -- pero la extraccion de LVS hace
+    #     fusetop.interacting(cap_mk).interacting(mim_l_mk)
+    # y sin este el conjunto sale vacio: el condensador es legal y a la vez
+    # invisible para el LVS.
+    "MIM_L_MK": (117, 10),
     # BJT layers
     "drc_bjt": (127, 5),
     "lvs_bjt": (118, 5),
@@ -69,6 +75,7 @@ gf180_glayer_mapping = {
     "dnwell": "dnwell",
     "capmet": "fusetop",
     "capmet_mk": "CAP_MK",
+    "capmet_mk2": "MIM_L_MK",
     # bjt layer
     "drc_bjt": "drc_bjt",
     "lvs_bjt": "lvs_bjt",

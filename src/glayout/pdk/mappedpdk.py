@@ -260,6 +260,7 @@ class MappedPDK(Pdk):
         "capmet",
         # optional marker some processes require around the cap plate
         "capmet_mk",
+        "capmet_mk2",
         "lvs_bjt",
         "drc_bjt",
         # _pin layers
