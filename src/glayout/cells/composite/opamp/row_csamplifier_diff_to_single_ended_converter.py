@@ -5,6 +5,7 @@ from glayout.primitives.fet import nmos, pmos, multiplier
 from glayout.cells.elementary.diff_pair import diff_pair
 from glayout.primitives.guardring import tapring
 from glayout.primitives.mimcap import mimcap_array, mimcap
+from glayout.routing.straight_route import straight_route
 from glayout.routing.L_route import L_route
 from glayout.routing.c_route import c_route
 from glayout.primitives.via_gen import via_stack, via_array
@@ -84,6 +85,19 @@ def row_csamplifier_diff_to_single_ended_converter(pdk: MappedPDK, diff_to_singl
         )
         halfMultp_ref = pmos_comps << halfMultp
         halfMultp_ref.movex(direction * abs(x_dim_center + halfMultp_ref.xmax+1))
+        # El pozo al potencial de la fuente. El netlist de esta celda declara
+        # B = S = VSS y el comentario de __connect_cs_netlist da por hecho que
+        # el anillo de welltie ya lo cumple, pero la extraccion lo saca en su
+        # propia red: los pfets de salida quedan con el pozo flotando. El
+        # anillo esta pegado al dispositivo y los dos puertos son met2, asi
+        # que el enlace es un tramo recto sobre terreno libre.
+        lado = "W" if direction < 0 else "E"
+        opuesto = "E" if direction < 0 else "W"
+        pmos_comps << straight_route(
+            pdk,
+            halfMultp_ref.ports["multiplier_0_source_" + lado],
+            halfMultp_ref.ports["tie_" + lado + "_top_met_" + opuesto],
+        )
         label = "L_" if direction==-1 else "R_"
         # this special marker is used to rename these ports in the opamp to commonsource_Pamp_
         pmos_comps.add_ports(halfMultp_ref.get_ports_list(),prefix="halfpspecialmarker_"+label)
