@@ -278,6 +278,14 @@ def diff_pair_ibias(
         ("VSS",   "ibias_purposegndport",    "met4"),
         ("B",     "tap_N_top_met_S",         "met1"),
     ]
+    # Estas etiquetas existen para poder pasar LVS con la celda suelta. Dentro
+    # de un compuesto sus redes son internas, asi que heredarlas las extrae
+    # como pines de nivel superior que el esquematico del padre no tiene: es
+    # lo que deja al opamp con VDD1, VDD2, VN|VP, IBIAS y B de mas. El mismo
+    # interruptor que ya respetan diff_pair, current_mirror y fvf.
+    import os as _os_pins
+    if _os_pins.environ.get("GLAYOUT_NO_PIN_LABELS"):
+        _pin_specs = []
     for _text, _portname, _glayer in _pin_specs:
         _port = diffpair_i_.ports[_portname]
         _alignment = _orient_to_align[round(_port.orientation) % 360]
