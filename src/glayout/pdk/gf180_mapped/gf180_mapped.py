@@ -144,7 +144,14 @@ gf180_mapped_pdk = MappedPDK(
 	models={
         'nfet': 'nfet_03v3',
 		'pfet': 'pfet_03v3',
-		'mimcap': 'mimcap_1p0fF'
+		# El PDK llama a estos modelos cap_mim_<densidad>fF: 1f0, 1f5 o 2f0.
+		# 'mimcap_1p0fF' no existe -- prefijo invertido y 'p' por 'f' -- asi que
+		# el netlist de referencia nombraba un modelo inexistente y el LVS no
+		# podia emparejarlo con el cap_mim_* que extrae del layout, en ninguna
+		# celda con condensador. Se conserva la densidad que la intencion
+		# 2.0 fF/um2, que es lo que asumen las cuatro variantes del runset de LVS
+		# de proceso, no del generador.
+		'mimcap': 'cap_mim_2f0fF'
     },
     layers=LAYER,
     pdk_files=pdk_files,
