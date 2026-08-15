@@ -24,8 +24,12 @@ def __generate_mimcap_netlist(pdk: MappedPDK, size: tuple[float, float]) -> Netl
 	return Netlist(
 		circuit_name="MIMCap",
 		nodes = ['V1', 'V2'],
+		# C-prefix, not X: with `X` the line is a subcircuit call and the LVS
+		# reader never builds a capacitor device out of it, so the extracted
+		# MIM has nothing to pair with and shows up as a layout-only device.
+		# The fets go through the same rewrite in the gf180 LVS runner.
 		source_netlist=""".subckt {circuit_name} {nodes} l=1 w=1
-X1 V1 V2 {model} l={{l}} w={{w}}
+C1 V1 V2 {model} l={{l}} w={{w}}
 .ends {circuit_name}""",
 		instance_format="X{name} {nodes} {circuit_name} l={length} w={width}",
 		parameters={
