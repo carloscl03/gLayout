@@ -205,19 +205,42 @@ def run_lvs_klayout_gf180(
         spice_staged = _stage_inputs(tmpdir, design_name, layout_path, netlist_path)
         sub_name = _detect_substrate_name(spice_staged, design_name)
 
-        cmd = [
-            "python3", str(run_lvs),
-            f"--layout={layout_path}",
-            f"--netlist={spice_staged}",
-            "--variant=D",
-            f"--topcell={design_name}",
-            "--run_mode=flat",
-            "--combine",
-            "--schematic_simplify",
-            "--top_lvl_pins",
-            f"--lvs_sub={sub_name}",
-            f"--run_dir={tmpdir}",
-        ]
+        # Se llama al deck directamente en vez de a run_lvs.py, que solo acepta
+        # cuatro variantes predefinidas y ninguna sirve aqui:
+        #
+        #   A -> mim_option=A  metal_level=3LM
+        #   B -> mim_option=B  metal_level=4LM
+        #   C -> mim_option=B  metal_level=5LM
+        #   D -> mim_option=B  metal_level=5LM
+        #
+        # glayout dibuja el MIM en opcion A (met2 / FuseTop / met3) y rutea
+        # hasta met5. Esa combinacion es un proceso real -- el 1P5M (TM 6KA
+        # with MIM) del DRM la documenta -- pero no esta entre las variantes.
+        # Con D el extractor busca el MIM entre metal4 y metal5 y encuentra
+        # uno de los seis condensadores del opamp; con A pierde todo el ruteo
+        # por encima de met3. El deck si acepta las opciones sueltas.
+        lvs_deck = run_lvs.parent / "gf180mcu.lvs"
+        sws = {
+            "input": str(layout_path),
+            "schematic": str(spice_staged),
+            "topcell": design_name,
+            "target_netlist": str(tmpdir / f"{design_name}.cir"),
+            "report": str(tmpdir / f"{design_name}.lvsdb"),
+            "mim_option": "A",
+            "metal_level": "5LM",
+            "metal_top": "11K",
+            "poly_res": "1k",
+            "mim_cap": "2",
+            "run_mode": "flat",
+            "combine": "true",
+            "schematic_simplify": "true",
+            "top_lvl_pins": "true",
+            "lvs_sub": sub_name,
+            "thr": "2",
+        }
+        cmd = ["klayout", "-b", "-r", str(lvs_deck)]
+        for k, v in sws.items():
+            cmd += ["-rd", f"{k}={v}"]
         proc = subprocess.run(cmd, cwd=tmpdir, capture_output=True, text=True)
 
         # Even on klayout-exit-nonzero we want the log preserved for triage.
