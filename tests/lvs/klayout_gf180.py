@@ -273,6 +273,11 @@ def run_lvs_klayout_gf180(
             "combine": "true",
             "schematic_simplify": "true",
             "top_lvl_pins": "true",
+            # El deck lo trae en false, asi que el extraido sale con numeros de
+            # red en vez de nombres y las etiquetas del GDS no llegan al
+            # informe. run_lvs.py lo pone en true salvo que se pida lo
+            # contrario; aqui hace falta lo mismo.
+            "spice_net_names": "true",
             "lvs_sub": sub_name,
             "thr": "2",
         }
