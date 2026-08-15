@@ -219,7 +219,16 @@ def run_lvs_klayout_gf180(
         # Con D el extractor busca el MIM entre metal4 y metal5 y encuentra
         # uno de los seis condensadores del opamp; con A pierde todo el ruteo
         # por encima de met3. El deck si acepta las opciones sueltas.
-        lvs_deck = run_lvs.parent / "gf180mcu.lvs"
+        # GF180_LVS_DECK permite apuntar a un deck corregido. El del PDK tiene
+        # rota la rama de la opcion A:
+        #     connect(metal2, mim_virtual)     <- deberia ser metal2_con, que
+        #                                         es lo que usa el grafo
+        #     falta connect(via2_cap, metal3_con)
+        # Sin las dos, la placa inferior del MIM no se une al resto de met2 y
+        # la superior no llega a met3. En el opamp eso son 10 mismatches: los
+        # seis condensadores sin emparejar y el nodo que los cuelga.
+        lvs_deck = Path(os.environ.get("GF180_LVS_DECK")
+                        or (run_lvs.parent / "gf180mcu.lvs"))
         sws = {
             "input": str(layout_path),
             "schematic": str(spice_staged),
