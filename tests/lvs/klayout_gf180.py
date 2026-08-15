@@ -175,6 +175,34 @@ def _classify_log(log: str) -> Dict[str, Any]:
     return {"is_pass": False, "conclusion": "LVS inconclusive"}
 
 
+# La rama de la opcion A de mimcap_connections.lvs conecta el plato de abajo a
+# `metal2` en vez de a `metal2_con` -- que es la capa que forma el grafo de
+# conectividad -- y le falta el salto de via2_cap a metal3_con. La opcion B, al
+# lado, si tiene los tres connect. Sin arreglarlo las dos placas del MIM quedan
+# sueltas: en el opamp son 10 mismatches de 19.
+_MIM_A_ROTO = """  connect(metal2, mim_virtual)
+  connect(fuse_cap, via2_cap)"""
+_MIM_A_SANO = """  connect(metal2_con, mim_virtual)
+  connect(fuse_cap, via2_cap)
+  connect(via2_cap, metal3_con)"""
+
+
+def _deck_con_opcion_a_arreglada(deck: Path, destino: Path) -> Path:
+    """Copia el deck del PDK y arregla su rama de la opcion A del MIM.
+
+    Devuelve el deck original si ya viene corregido o si no se reconoce el
+    texto, para que una version distinta del PDK no rompa la corrida.
+    """
+    conexiones = deck.parent / "rule_decks" / "mimcap_connections.lvs"
+    if not conexiones.is_file() or _MIM_A_ROTO not in conexiones.read_text():
+        return deck
+
+    shutil.copytree(deck.parent, destino, dirs_exist_ok=True)
+    parcheado = destino / "rule_decks" / "mimcap_connections.lvs"
+    parcheado.write_text(parcheado.read_text().replace(_MIM_A_ROTO, _MIM_A_SANO))
+    return destino / deck.name
+
+
 def run_lvs_klayout_gf180(
     layout: str,
     design_name: str,
@@ -228,7 +256,8 @@ def run_lvs_klayout_gf180(
         # la superior no llega a met3. En el opamp eso son 10 mismatches: los
         # seis condensadores sin emparejar y el nodo que los cuelga.
         lvs_deck = Path(os.environ.get("GF180_LVS_DECK")
-                        or (run_lvs.parent / "gf180mcu.lvs"))
+                        or _deck_con_opcion_a_arreglada(run_lvs.parent / "gf180mcu.lvs",
+                                                       tmpdir / "deck"))
         sws = {
             "input": str(layout_path),
             "schematic": str(spice_staged),
