@@ -730,6 +730,19 @@ class Component:
                 f"hay {sorted(self.ports)[:8]}..."
             ) from None
 
+    def pprint_ports(self) -> None:
+        """Print the ports, one per line.
+
+        gdsfactory offers this on Component and the tutorials use it to look
+        at a cell while building it. Without it a notebook that runs fine on
+        the other backend dies with AttributeError halfway through.
+        """
+        for name in sorted(self.ports):
+            p = self.ports[name]
+            print("%-42s (%9.3f, %9.3f)  ancho %7.3f  %5.1f  %s"
+                  % (name, p.center[0], p.center[1], p.width,
+                     p.orientation or 0.0, p.layer))
+
     def get_ports_list(self, prefix: str = "", **filters) -> list[Port]:
         out: list[Port] = []
         for name, p in self.ports.items():
