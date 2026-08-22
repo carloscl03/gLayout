@@ -124,6 +124,7 @@ def diff_pair(
 	dummy: Union[bool, tuple[bool, bool]] = True,
 	substrate_tap: bool=True,
 	dum_net: Optional[str] = None,
+	with_pin_labels: bool = True,
 ) -> Component:
 	"""create a diffpair with 2 transistors placed in two rows with common centroid place. Sources are shorted
 	width = width of the transistors
@@ -250,16 +251,18 @@ def diff_pair(
 
 	component.info['netlist'] = diff_pair_netlist(fetL, fetR, pdk=pdk, dum_net=dum_net, substrate_tap=substrate_tap)
 
-	# gf180 LVS uses klayout's official deck which strictly requires named
-	# pin labels on met*_label layers — without them, klayout extracts the
-	# cell with only an implicit substrate port and LVS fails. sky130 LVS
-	# via magic+netgen tolerates missing labels, so only emit the labels
-	# for gf180. The B (bulk) label needs `substrate_tap=True` since it
-	# anchors on `tap_N_top_met_S`, which only exists when the diffpair's
-	# tap ring is drawn. Composite cells suppress this via GLAYOUT_NO_PIN_LABELS
-	# so inner labels don't leak into the parent cell's GDS.
-	import os
-	if pdk.name.lower() == "gf180" and substrate_tap and not os.environ.get("GLAYOUT_NO_PIN_LABELS"):
+	# gf180 LVS uses klayout's official deck, which requires named pin labels on
+	# met*_label layers; without them klayout extracts only an implicit substrate
+	# port. sky130's magic+netgen tolerates missing labels, so emit for gf180
+	# only. B anchors on tap_N_top_met_S, which exists only when substrate_tap
+	# draws the ring.
+	#
+	# `with_pin_labels=False` lets a composite parent suppress these so they
+	# don't leak into the parent's flattened GDS and become extra top-level pins
+	# under klayout's --top_lvl_pins. Replaces the old GLAYOUT_NO_PIN_LABELS env
+	# var: @cell keys its cache on arguments, so flipping an env var between two
+	# otherwise-identical calls returns the stale cached component.
+	if pdk.name.lower() == "gf180" and substrate_tap and with_pin_labels:
 		component = add_df_labels(component, pdk)
 	return component
 

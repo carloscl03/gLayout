@@ -10,6 +10,7 @@ import os
 # Actual Pin definations for GlobalFoundries 180nmMCU from the PDK manual
 # Ref: https://gf180mcu-pdk.readthedocs.io/en/latest/
 
+#LAYER["fusetop"]=(75, 0)
 LAYER = {
     "metal5": (81, 0),
     "via4": (41, 0),
@@ -28,22 +29,12 @@ LAYER = {
     "nwell": (21, 0),
     "lvpwell": (204, 0),
     "dnwell": (12, 0),
-    # MIM capacitor, option A. The top plate is FuseTop; CAP_MK is only a
-    # marker that has to enclose it (rule MIM.7). Drawing the marker as if it
-    # were the plate leaves the cap with no dielectric at all, so the via2
-    # array that contacts the top plate lands on the bottom plate instead and
-    # shorts the two together.
-    "fusetop": (75, 0),
     "CAP_MK": (117, 5),
-    # Segundo marcador del MIM. MIM.7 solo pide CAP_MK, asi que con ese solo
-    # el DRC pasa -- pero la extraccion de LVS hace
-    #     fusetop.interacting(cap_mk).interacting(mim_l_mk)
-    # y sin este el conjunto sale vacio: el condensador es legal y a la vez
-    # invisible para el LVS.
-    "MIM_L_MK": (117, 10),
     # BJT layers
     "drc_bjt": (127, 5),
     "lvs_bjt": (118, 5),
+    "MIM_L_MK": (117, 10),
+    "fusetop": (75, 0),
     # _Label Layer Definations
     "metal5_label": (81,10),
     "metal4_label": (46,10),
@@ -73,9 +64,7 @@ gf180_glayer_mapping = {
     "nwell": "nwell",
     "pwell": "lvpwell",
     "dnwell": "dnwell",
-    "capmet": "fusetop",
-    "capmet_mk": "CAP_MK",
-    "capmet_mk2": "MIM_L_MK",
+    "capmet": "CAP_MK",
     # bjt layer
     "drc_bjt": "drc_bjt",
     "lvs_bjt": "lvs_bjt",
@@ -116,7 +105,7 @@ gf180_valid_bjt_sizes = {
     ],
 }
 
-# note for DRC, there is mim_option 'A'. This is the one configured for use
+# note for DRC, there is mim_option 'B'. This is the one configured for use
 
 gf180_lydrc_file_path = Path(__file__).resolve().parent / "gf180mcu_drc_wrapper.drc"
 # openfasoc_dir = Path(__file__).resolve().parent.parent.parent.parent.parent.parent.parent
@@ -144,13 +133,11 @@ gf180_mapped_pdk = MappedPDK(
 	models={
         'nfet': 'nfet_03v3',
 		'pfet': 'pfet_03v3',
-		# El PDK llama a estos modelos cap_mim_<densidad>fF: 1f0, 1f5 o 2f0.
-		# 'mimcap_1p0fF' no existe -- prefijo invertido y 'p' por 'f' -- asi que
-		# el netlist de referencia nombraba un modelo inexistente y el LVS no
-		# podia emparejarlo con el cap_mim_* que extrae del layout, en ninguna
-		# celda con condensador. Se conserva la densidad que la intencion
-		# 2.0 fF/um2, que es lo que asumen las cuatro variantes del runset de LVS
-		# de proceso, no del generador.
+		# The PDK names these cap_mim_<density>fF: 1f0, 1f5 or 2f0.
+		# 'mimcap_1p0fF' does not exist -- prefix reversed, 'p' for 'f' --
+		# so the reference netlist named a model the LVS reader could not
+		# pair with the cap_mim_* it extracts, in every cell with a cap.
+		# Which density to use is a process decision, not the generator's.
 		'mimcap': 'cap_mim_2f0fF'
     },
     layers=LAYER,
