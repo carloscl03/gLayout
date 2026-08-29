@@ -126,6 +126,7 @@ jobs:
         run: |
           set -ux
           . "$GITHUB_WORKSPACE/.venv/bin/activate"
+          set +e
           python -c "import gdstk; lib=gdstk.Library(); c=lib.new_cell('t'); c.add(gdstk.rectangle((0,0),(1,1))); lib.write_gds('tutorial/out.gds')"
           cd tutorial
           for i in $(seq 1 10); do
@@ -140,6 +141,7 @@ jobs:
         run: |
           set -ux
           . "$GITHUB_WORKSPACE/.venv/bin/activate"
+          set +e
           for i in $(seq 1 6); do
             t0=$(date +%s%N)
             python tests/notebooks/run_tutorial_notebooks.py --only glayout_opamp --out-dir probe_$i || true
