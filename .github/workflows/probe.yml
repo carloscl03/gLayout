@@ -122,21 +122,51 @@ jobs:
           uv pip install -e .
           uv pip install jupyter nbconvert ipykernel
 
-      - name: Probe C - nbconvert con debug, 8 corridas
+      - name: Probe D - correlacion TCP/memoria y A/B sin display
         run: |
           set -ux
           . "$GITHUB_WORKSPACE/.venv/bin/activate"
           python -c "import jupyter_client; print('jupyter-client', jupyter_client.__version__)"
           set +e
           cd tutorial
-          for i in $(seq 1 8); do
+
+          # mapa de celdas: indice nbformat -> tipo -> primera linea
+          python - <<'PYEOF'
+          import json
+          nb = json.load(open("glayout_opamp.ipynb"))
+          for i, c in enumerate(nb["cells"]):
+              src = "".join(c["source"]).strip().splitlines()
+              primera = src[0][:70] if src else "(vacia)"
+              print("MAPA celda %d [%s] %s" % (i, c["cell_type"], primera))
+          PYEOF
+
+          # copia sin displays: mismas celdas, sin empujar SVGs por iopub
+          python - <<'PYEOF'
+          import json
+          nb = json.load(open("glayout_opamp.ipynb"))
+          for c in nb["cells"]:
+              if c["cell_type"] != "code": continue
+              c["source"] = [l for l in c["source"]
+                             if "display_component(" not in l and "display(" not in l]
+          json.dump(nb, open("glayout_opamp_nodisp.ipynb", "w"))
+          print("copia sin display escrita")
+          PYEOF
+
+          # muestreador en segundo plano
+          python "$GITHUB_WORKSPACE/.github/workflows/sonda_d.py" sampler.log &
+          SAMPLER=$!
+
+          for i in 1 2 3 4 5 6; do
+            NB=glayout_opamp.ipynb; TAG="orig$i"
+            if [ $i -ge 4 ]; then NB=glayout_opamp_nodisp.ipynb; TAG="nodisp$i"; fi
             t0=$(date +%s%N)
-            timeout 400 jupyter nbconvert --to notebook --execute glayout_opamp.ipynb               --output out_probe_$i.ipynb               --ExecutePreprocessor.timeout=180               --ExecutePreprocessor.record_timing=True               --Application.log_level=DEBUG               --Application.log_format="%(asctime)s.%(msecs)03d %(name)s %(message)s"               --Application.log_datefmt="%H:%M:%S"               2> dbg_$i.log
+            timeout 400 jupyter nbconvert --to notebook --execute "$NB"               --output "out_$TAG.ipynb"               --ExecutePreprocessor.timeout=180               --Application.log_level=DEBUG               --Application.log_format="%(asctime)s.%(msecs)03d %(name)s %(message)s"               --Application.log_datefmt="%H:%M:%S"               2> "dbg_$TAG.log"
             rc=$?
             t1=$(date +%s%N)
-            echo "RUN[$i] rc=$rc ms=$(( (t1-t0)/1000000 ))"
-            python "$GITHUB_WORKSPACE/.github/workflows/analiza_huecos.py" dbg_$i.log out_probe_$i.ipynb "$i"
+            echo "RUN[$TAG] rc=$rc ms=$(( (t1-t0)/1000000 ))"
+            python "$GITHUB_WORKSPACE/.github/workflows/correlaciona.py" "dbg_$TAG.log" sampler.log "$TAG"
           done
+          kill $SAMPLER
 
       - name: Upload debug logs
         if: always()
@@ -145,6 +175,6 @@ jobs:
           name: klayout-probe-debug
           path: |
             tutorial/dbg_*.log
-            tutorial/out_probe_*.ipynb
+            tutorial/sampler.log
           retention-days: 7
 
