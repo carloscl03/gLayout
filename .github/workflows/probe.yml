@@ -122,32 +122,29 @@ jobs:
           uv pip install -e .
           uv pip install jupyter nbconvert ipykernel
 
-      - name: Probe A - bare klayout, 10 runs
+      - name: Probe C - nbconvert con debug, 8 corridas
         run: |
           set -ux
           . "$GITHUB_WORKSPACE/.venv/bin/activate"
-          set +e
-          python -c "import gdstk; lib=gdstk.Library(); c=lib.new_cell('t'); c.add(gdstk.rectangle((0,0),(1,1))); lib.write_gds('tutorial/out.gds')"
-          cd tutorial
-          for i in $(seq 1 10); do
-            t0=$(date +%s%N)
-            timeout 170 klayout out.gds -zz -r glayout/pdk/sky130_mapped/sky130.lydrc >/dev/null 2>&1
-            rc=$?
-            t1=$(date +%s%N)
-            echo "BARE[$i] rc=$rc ms=$(( (t1-t0)/1000000 ))"
-          done
-
-      - name: Probe B - opamp notebook, 6 runs con jupyter-client 8.9.1
-        run: |
-          set -ux
-          . "$GITHUB_WORKSPACE/.venv/bin/activate"
-          uv pip install "jupyter-client==8.9.1"
           python -c "import jupyter_client; print('jupyter-client', jupyter_client.__version__)"
           set +e
-          for i in $(seq 1 6); do
+          cd tutorial
+          for i in $(seq 1 8); do
             t0=$(date +%s%N)
-            python tests/notebooks/run_tutorial_notebooks.py --only glayout_opamp --out-dir probe_$i || true
+            timeout 400 jupyter nbconvert --to notebook --execute glayout_opamp.ipynb               --output out_probe_$i.ipynb               --ExecutePreprocessor.timeout=180               --ExecutePreprocessor.record_timing=True               --Application.log_level=DEBUG               --Application.log_format="%(asctime)s.%(msecs)03d %(name)s %(message)s"               --Application.log_datefmt="%H:%M:%S"               2> dbg_$i.log
+            rc=$?
             t1=$(date +%s%N)
-            echo "NB[$i] ms=$(( (t1-t0)/1000000 ))"
-            python -c "import json;s=json.load(open('probe_$i/summary.json'));r=s['results'][0];print('NB[$i] status=%s dur=%.1f err=%s' % (r['status'], r['duration_s'], r.get('error_name')))" || true
+            echo "RUN[$i] rc=$rc ms=$(( (t1-t0)/1000000 ))"
+            python "$GITHUB_WORKSPACE/.github/workflows/analiza_huecos.py" dbg_$i.log out_probe_$i.ipynb "$i"
           done
+
+      - name: Upload debug logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: klayout-probe-debug
+          path: |
+            tutorial/dbg_*.log
+            tutorial/out_probe_*.ipynb
+          retention-days: 7
+
