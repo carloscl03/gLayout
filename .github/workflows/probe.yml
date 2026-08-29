@@ -137,10 +137,12 @@ jobs:
             echo "BARE[$i] rc=$rc ms=$(( (t1-t0)/1000000 ))"
           done
 
-      - name: Probe B - opamp notebook, 6 runs
+      - name: Probe B - opamp notebook, 6 runs con jupyter-client 8.9.1
         run: |
           set -ux
           . "$GITHUB_WORKSPACE/.venv/bin/activate"
+          uv pip install "jupyter-client==8.9.1"
+          python -c "import jupyter_client; print('jupyter-client', jupyter_client.__version__)"
           set +e
           for i in $(seq 1 6); do
             t0=$(date +%s%N)
